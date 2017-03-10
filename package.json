@@ -1,0 +1,21 @@
+{
+  "name": "moving_interaction_rest",
+  "version": "1.0.0",
+  "description": "MOVING platform interaction data REST service",
+  "main": "server.js",
+  "scripts": {
+    "start": "startserver.cmd"
+  },
+  "keywords": [
+    "Web",
+    "interaction",
+    "usability",
+    "REST"
+  ],
+  "author": "Aitor Apaolaza",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.15.2"
+  },
+  "devDependencies": {}
+}
