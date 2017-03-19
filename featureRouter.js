@@ -47,7 +47,12 @@ router.route("/rightClick/:userid/")
     //Provides access to the parameters following the conventional ?name=value&name2=value2
 
     var startTimestamp = req.query.starttime.toString();//1454136343379
-    var endTimestamp = req.query.endtime.toString();//1456137344379
+
+    //Configure default parameter values
+    var endTimestamp = req.query.endtime;
+
+
+    endTimestamp = typeof endTimestamp !== 'undefined' ? endTimestamp.toString() : new Date().getTime().toString();
 
     //If any of the variables has not been defined, return an error
     if (featureName && userID && startTimestamp && endTimestamp) {

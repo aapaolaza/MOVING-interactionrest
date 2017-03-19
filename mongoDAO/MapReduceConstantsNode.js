@@ -4,21 +4,30 @@
 var MongoClient = require('mongodb').MongoClient
   , Server = require('mongodb').Server;
 
+//This tag can be found in the "msg" field in the current ops command of MapReduce commands
+const mapReduceTag = "m/r";
+const xmlQueryResults = "xmlQueryResults";
+const xmlQueryCatalog = "xmlQueryCatalog";
+
+const mongoLogCollection = "log";
+
+//This prefix will be added to all queries
+const queryCollectionPrefix = "xmlQuery_"
 
 ///MongoDB connection info
-var mongoPath = "localhost/ucivitdb";//SERVERIP/DATABASENAME
-var mongoAuthenticateDB = "admin";//DO NOT CHANGE
-var mongoQueryDB = "ucivitdb";
-var mongoUser = "DBUSERNAME";
-var mongoPass = "DBPASSWORD";
+const mongoPath = "localhost/ucivitdb";//SERVERIP/DATABASENAME
+const mongoAuthenticateDB = "admin";//DO NOT CHANGE
+const mongoQueryDB = "ucivitdb";
+const mongoUser = "DBUSERNAME";
+const mongoPass = "DBPASSWORD";
 
-var mongoTimeout = 300000;//0
+const mongoTimeout = 300000;//0
 
-var userCollection = "activeUsers";
-var eventCollection = "events";
+const userCollection = "activeUsers";
+const eventCollection = "events";
 
 //web site to be analysed, determined by its "sd" value. 10002 is kupb, 10006 is CS
-var websiteId = "10006";
+const websiteId = "10006";
 
 
 /** Connects to the database, authenticates the connection against the correspondent
@@ -90,11 +99,11 @@ function completeDateValsMilliseconds(dateVal) {
 /////////////////////////////////////////////START OF CONSTANTS/////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-var scopeObject = {};
+const scopeObject = {};
 
 //list of banned IP addresses
-//var bannedIPlist = [ { "ip" : "130.88.193.26"} , { "ip" : "IP1"} , { "ip" : "IP2"}];
-var bannedIPlist = ["130.88.193.26", "IP1", "IP2"];
+//const bannedIPlist = [ { "ip" : "130.88.193.26"} , { "ip" : "IP1"} , { "ip" : "IP2"}];
+const bannedIPlist = ["130.88.193.26", "IP1", "IP2"];
 //the following query tests that the sid related with the ip 130.88.193.26 are filtered (it should be empty).
 //db.map_reduce_example.find({"_id.sid":{$in:["8hgYRPR2x1Jz", "7O25l3TPWVkp", "1l8yDX2ehiEv", "ZrZ2OrGb6fAY", "qptygSdE0H1z", "uAWrwKFf00rY", "5ZGlnqS1CPAE", "EVJZCfwAXF7j", "01v2m0HonZ3r", "pSaMH85B0Adz", "dzJnQXxQBKJT", "Qcs4OFkpPIbB", "x8UVE8L4598v", "4YWnL6iA0UpF"]}});
 
@@ -102,46 +111,46 @@ scopeObject["bannedIPlist"] = bannedIPlist;
 
 
 //These events should be ignored when calculating active times.
-var incorrectActTimeEvents = ["mobileGyroscopeEvent", "mouseOverEvent", "resizeEvent"]
+const incorrectActTimeEvents = ["mobileGyroscopeEvent", "mouseOverEvent", "resizeEvent"]
 scopeObject["incorrectActTimeEvents"] = incorrectActTimeEvents;
 
 ///////////List of events
-var loadEvent = "load";
+const loadEvent = "load";
 scopeObject["loadEvent"] = loadEvent;
 
-var mouseWheelEvent = "mousewheel";
+const mouseWheelEvent = "mousewheel";
 scopeObject["mouseWheelEvent"] = mouseWheelEvent;
 
-var mouseDownEvent = "mousedown";
+const mouseDownEvent = "mousedown";
 scopeObject["mouseDownEvent"] = mouseDownEvent;
 
-var mouseUpEvent = "mouseup";
+const mouseUpEvent = "mouseup";
 scopeObject["mouseUpEvent"] = mouseUpEvent;
 
-var mouseOverEvent = "mouseover";
+const mouseOverEvent = "mouseover";
 scopeObject["mouseOverEvent"] = mouseOverEvent;
 
-var mouseOutEvent = "mouseout";
+const mouseOutEvent = "mouseout";
 scopeObject["mouseOutEvent"] = mouseOutEvent;
 
-var mouseMoveEvent = "mousemove";
+const mouseMoveEvent = "mousemove";
 scopeObject["mouseMoveEvent"] = mouseMoveEvent;
 
-var dblclickEvent = "dblclick";
+const dblclickEvent = "dblclick";
 scopeObject["dblclickEvent"] = dblclickEvent;
 
-var mobileGyroscopeEvent = "mobileGyroscope";
+const mobileGyroscopeEvent = "mobileGyroscope";
 scopeObject["mobileGyroscope"] = mobileGyroscopeEvent;
 
-var scrollEvent = "scroll";
+const scrollEvent = "scroll";
 scopeObject["scrollEvent"] = scrollEvent;
 
-var resizeEvent = "resize";
+const resizeEvent = "resize";
 scopeObject["resize"] = resizeEvent;
 
 
 //////Session timeout
-var sessionTimeout = 40 * 60 * 1000;//40 mintues
+const sessionTimeout = 40 * 60 * 1000;//40 mintues
 scopeObject["sessionTimeout"] = sessionTimeout;
 
 
@@ -225,3 +234,5 @@ module.exports.userCollection = userCollection;
 module.exports.scopeObject = scopeObject;
 module.exports.eventCollection = eventCollection;
 module.exports.bannedIPlist = bannedIPlist;
+module.exports.sessionTimeout = sessionTimeout;
+module.exports.mongoLogCollection = mongoLogCollection;

@@ -7,6 +7,7 @@ const mapReduceTag = "m/r";
 const xmlQueryResults = "xmlQueryResults";
 const xmlQueryCatalog = "xmlQueryCatalog";
 
+
 //This prefix will be added to all queries
 const queryCollectionPrefix = "xmlQuery_"
 
@@ -28,13 +29,12 @@ function initialiseDB() {
  * @param userID
  * @param featureName
  * @param startTimestamp EPOCH
- * @param endTimestamp default "now"
+ * @param endTimestamp EPOCH
  */
 
 function testFeatureQuery(userID, featureName, startTimestamp, endTimestamp, callback) {
   console.log("featuresDAO:testFeatureQuery()");
-  //Configure default parameter values
-  var endTimestamp = typeof endTimestamp !== 'undefined' ? endTimestamp : new Date().getTime().toString();
+
 
   constants.connectAndValidateNodeJs(function (err, db) {
     if (err) return console.error("testFeatureQuery() ERROR connecting to DB" + err);

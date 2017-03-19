@@ -4,7 +4,8 @@
   "description": "MOVING platform interaction data REST service",
   "main": "server.js",
   "scripts": {
-    "start": "startserver.cmd"
+    "start": "node server.js",
+    "hardstart": "startserver.cmd"
   },
   "keywords": [
     "Web",
@@ -15,6 +16,7 @@
   "author": "Aitor Apaolaza",
   "license": "ISC",
   "dependencies": {
+    "async": "^2.1.5",
     "express": "^4.15.2"
   },
   "devDependencies": {}

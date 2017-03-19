@@ -12,6 +12,9 @@ router.get("/",function(req,res){
 app.use('/features', featureRouter)
 
 
+var processEvents = require('./mongoDAO/processEvents.js')
+processEvents.initialiseDB();
+
 var server = app.listen(8081, function () {
 
   var host = server.address().address
