@@ -19,7 +19,7 @@ const userProfileCollection = "userProfiles";
 const queryCollectionPrefix = "xmlQuery_";
 
 ///MongoDB connection info
-var dbAccessData = dbAccessDatarequire("./dbAccessData");
+var dbAccessData = require("./dbAccessData");
 const mongoPath = dbAccessData.mongoPath;
 const mongoAuthenticateDB = dbAccessData.mongoAuthenticateDB;
 const mongoQueryDB = dbAccessData.mongoQueryDB;

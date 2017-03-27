@@ -3,11 +3,8 @@ var app = express();
 var router = express.Router();
 var fs = require("fs");
 
-<<<<<<< HEAD
-=======
-const portNumber = 2828;
 
->>>>>>> e20f8f88c44aace6a746d29965ca0f72612c495f
+const portNumber = 2828;
 
 router.get("/",function(req,res){
     res.json({"error" : false,"message" : "MOVING interaction REST service"});
@@ -19,11 +16,9 @@ app.use('/features', featureRouter)
 var opRouter = require("./opRouter.js");
 app.use('/operations', opRouter)
 
-<<<<<<< HEAD
-var server = app.listen(8081, function () {
-=======
+
 var server = app.listen(portNumber, function () {
->>>>>>> e20f8f88c44aace6a746d29965ca0f72612c495f
+
 
   var host = server.address().address
   var port = server.address().port
@@ -58,8 +53,7 @@ process.on('exit', exitHandler.bind(null, { cleanup: true }));
 //catches ctrl+c event
 process.on('SIGINT', exitHandler.bind(null, { adminInitiated: true, exit: true }));
 
-<<<<<<< HEAD
-});
+
 
 
 //process.stdin.resume();//so the program will not close instantly
@@ -85,8 +79,7 @@ process.on('exit', exitHandler.bind(null, { cleanup: true }));
 //catches ctrl+c event
 process.on('SIGINT', exitHandler.bind(null, { adminInitiated: true, exit: true }));
 
-=======
->>>>>>> e20f8f88c44aace6a746d29965ca0f72612c495f
+
 //catches uncaught exceptions
 //Do we want to close the server if there is an uncaught exception?
 process.on('uncaughtException', exitHandler.bind(null, { exit: false }));
