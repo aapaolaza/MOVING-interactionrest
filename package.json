@@ -1,23 +1,29 @@
 {
   "name": "moving_interaction_rest",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MOVING platform interaction data REST service",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "hardstart": "startserver.cmd"
+    "start": "node server.js"
   },
   "keywords": [
     "Web",
     "interaction",
     "usability",
-    "REST"
+    "REST",
+    "mongodb"
   ],
   "author": "Aitor Apaolaza",
   "license": "ISC",
   "dependencies": {
     "async": "^2.1.5",
-    "express": "^4.15.2"
+    "express": "^4.15.2",
+    "mongodb": "^2.2.25"
   },
-  "devDependencies": {}
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://aapaolaza@bitbucket.org/aapaolaza/moving-interactionrest.git"
+  },
+  "homepage": "https://bitbucket.org/aapaolaza/moving-interactionrest#readme"
 }
