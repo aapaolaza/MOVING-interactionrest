@@ -19,10 +19,11 @@ function logMessage(type, operation, sd, message, startTimems, endTimems) {
       operation,
       sd,
       message,
+      duration: (endTimems - startTimems),
       startTimems,
-      startTime = datestampToReadable(startTimems),
+      startTime: constants.datestampToReadable(startTimems),
       endTimems,
-      endTime = datestampToReadable(endTimems)
+      endTime: constants.datestampToReadable(endTimems)
     };
     db.collection(constants.mongoLogCollection).insert(logDocument, function (err, records) {
       if (err) return console.error("logMessage() ERROR INSERTING LOG DOCUMENT " + err);
@@ -31,17 +32,6 @@ function logMessage(type, operation, sd, message, startTimems, endTimems) {
   });
 }
 
-/**
- * Given an epoch date, it returns a readable format of the date
- * @param {epoch date} datems 
- */
-function datestampToReadable(datems) {
-  var currentDate = new Date(datems);
-  return currentDate.getFullYear() + "-" + completeDateVals(currentDate.getMonth() + 1) + "-"
-    + completeDateVals(currentDate.getDate()) + "," + completeDateVals(currentDate.getHours())
-    + ":" + completeDateVals(currentDate.getMinutes())
-    + ":" + completeDateVals(currentDate.getSeconds())
-    + ":" + completeDateValsMilliseconds(currentDate.getMilliseconds());
-}
+
 
 module.exports.logMessage = logMessage;

@@ -67,6 +67,9 @@ router.route("/rightClick/:userid/")
   })
 
 
+function cleanUp() {
+  featuresDAO.cleanUp();
+}
 
-
-module.exports = router
+module.exports = router;
+module.exports.cleanUp = cleanUp;

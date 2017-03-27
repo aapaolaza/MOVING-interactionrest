@@ -3,18 +3,68 @@ var constants = require("./MapReduceConstantsNode.js");
 var mongoLog = require("./mongoLog.js");
 
 
-function initialiseDB() {
-  async.waterfall([
-    function (callback) {
-      urlFixer("0", callback);
-    }
-  ], function (err, result) {
-    if (err) return console.error("initialiseDB() ERROR occured in one of the functions: " + err);
-    console.log("all initialisation functions finished");
+var db;
+
+function initialiseDB(callback) {
+  console.log("initialiseDB()")
+  var startTimems = new Date();
+
+  constants.connectAndValidateNodeJs(function (err, databaseConnection) {
+    if (err) return console.error("initialiseDB() ERROR connecting to DB" + err);
+    db = databaseConnection;
+    async.waterfall([
+      /*function (callback) {
+        urlFixer("0", callback);
+      },*/
+      initialiseIndexes,
+      databaseCleanUp
+    ], function (err, result) {
+      if (err) return console.error("initialiseDB() ERROR occured in one of the functions: " + err);
+      console.log("all initialisation functions finished");
+      mongoLog.logMessage("optime", "initialiseDB",
+        constants.websiteId, "All initialisation functions finished", startTimems, new Date());
+      callback("All initialisation functions finished:" + constants.datestampToReadable(startTimems)
+        + "end: " + constants.datestampToReadable(new Date()));
+    });
   });
 }
 
-function intialiseIndexes(callback) {
+/**
+ * UNUSED FOR THE TIME BEING! I have made some changes that remove the need to usethese functions.
+ * These functions are prepared to be run at any time, as they only update the lastly created events.
+ * 
+ */
+function routineFunctions(callback) {
+  var startTimems = new Date();
+
+  constants.connectAndValidateNodeJs(function (err, databaseConnection) {
+    if (err) return console.error("initialiseDB() ERROR connecting to DB" + err);
+    db = databaseConnection;
+    async.waterfall([
+      createUserList,
+      addEpisodeCounter
+    ], function (err, result) {
+      if (err) {
+        mongoLog.logMessage("error", "routineFunctions",
+          constants.websiteId, err, startTimems, new Date());
+        return console.error("initialiseDB() ERROR occured in one of the functions: " + err);
+      }
+      console.log("all routine functions finished");
+      mongoLog.logMessage("optime", "routineFunctions",
+        constants.websiteId, "All routine functions finished", startTimems, new Date());
+      callback("All routine functions finished start:" + constants.datestampToReadable(startTimems)
+        + "end: " + constants.datestampToReadable(new Date()));
+    });
+  });
+}
+
+function cleanUp() {
+  constants.closeConnection();
+}
+
+function initialiseIndexes(callback) {
+  var startTimems = new Date();
+
   constants.connectAndValidateNodeJs(function (err, db) {
     if (err) return console.error("initialiseDB() ERROR connecting to DB" + err);
 
@@ -93,14 +143,15 @@ function intialiseIndexes(callback) {
           callback();
         });
       }
-
     ],
       // optional callback
       function (err, results) {
         if (err)
-          return console.error("initialiseDB() ERROR creating the indexes:" + err);
+          return console.error("initialiseIndexes() ERROR creating the indexes:" + err);
         else {
           console.log("All indexes have been created");
+          mongoLog.logMessage("optime", "initialiseIndexes",
+            constants.websiteId, "All indexes have been created", startTimems, new Date());
           callback(null);
         }
       }
@@ -111,7 +162,8 @@ function intialiseIndexes(callback) {
 /**
  * Removes erroneous events
  */
-function databaseCleanUp() {
+function databaseCleanUp(callback) {
+  var startTimems = new Date();
   async.parallel([
     /*function (callback) {
       db.collection(constants.eventCollection).remove({ 'sd': { $ne: '$websiteId' } }, function (err) {
@@ -141,6 +193,9 @@ function databaseCleanUp() {
     // optional callback
     function (err, results) {
       console.log("Erroneous events have been deleted");
+      mongoLog.logMessage("optime", "databaseCleanUp()",
+        constants.websiteId, "Erroneous events have been deleted", startTimems, new Date());
+
       callback(null);
     }
   );
@@ -157,13 +212,17 @@ function databaseCleanUp() {
 function removeDuplicates(callback) {
   const duplicateCollection = "duplicateValues";
 
+  var startTimems = new Date();
+
   async.waterfall([
-    createDuplicateCollection,
-    deleteDuplicates,
+    //createDuplicateCollection,
+    //deleteDuplicates
     createDuplicateIndex
   ], function (err, result) {
     if (err) return console.error("removeDuplicates() ERROR occured in one of the functions: " + err);
     console.log("removeDuplicates() all duplicates removed");
+    mongoLog.logMessage("optime", "removeDuplicates()",
+      constants.websiteId, "Duplicates have been deleted", startTimems, new Date());
     callback(null);
   });
 
@@ -187,7 +246,13 @@ function removeDuplicates(callback) {
       }
 
       db.collection(constants.eventCollection).mapReduce(mapFunction, reduceFunction, { out: duplicateCollection }, function (err, db) {
-        if (err) return console.error("removeDuplicates() ERROR executing mapReduce" + err);
+        if (err) {
+          mongoLog.logMessage("error", "removeDuplicates()",
+            constants.websiteId, "Error executing MapReduce " + err + ", " + constants.getCurrentConnectionOptions(),
+            startTimems, new Date());
+          return console.error("removeDuplicates() ERROR executing mapReduce " + err);
+        }
+
         callback(null);
       });
     });
@@ -201,7 +266,10 @@ function removeDuplicates(callback) {
     constants.connectAndValidateNodeJs(function (err, db) {
       if (err) return console.error("deleteDuplicates() ERROR connecting to DB" + err);
       db.collection(duplicateCollection).find({ value: { $gt: 1 } }).toArray(function (err, duplicatesList) {
-        if (err || !duplicatesList) console.log("No duplicates found");
+        if (err || !duplicatesList) {
+          console.log("No duplicates found");
+          callback();
+        }
         else {
           var duplicatesProcessed = 0;
           duplicatesList.forEach(function (duplicateItem) {
@@ -210,28 +278,33 @@ function removeDuplicates(callback) {
               "sid": duplicateItem._id.sid,
               "sessionstartms": duplicateItem._id.sessionstartms,
               "event": duplicateItem._id.event,
-              "ip": duplicateItem._id.ip,
-              "timestamp": duplicateItem._id.timestamp,
               "timestampms": duplicateItem._id.timestampms,
-              "usertimezoneoffset": duplicateItem._id.usertimezoneoffset,
               "sd": duplicateItem._id.sd
-            }, function (err, duplicateEventsList) {
-              //IMPORTANT!! we only want to delete the duplicates after the "real" event
-              var first = true;
-              //Delete all "fakes" after the first occurrence of teh duplicate
-              duplicateEventsList.forEach(function (duplicateEventItem) {
-                if (first)
-                  first = false
-                else
-                  db.collection(constants.eventCollection).remove({ _id: duplicateEventItem._id });
+            }).toArray(function (err, duplicateEventsList) {
+              //IMPORTANT!! remove the first element in array as we only want to delete the duplicates after the "real" event
+              duplicateEventsList.shift();
+
+              // assuming openFiles is an array of file names
+              async.each(duplicateEventsList, function (duplicateEventItem, callback) {
+                db.collection(constants.eventCollection).remove({ _id: duplicateEventItem._id },
+                  function (err, numberOfRemovedDocs) {
+                    console.log(numberOfRemovedDocs + " duplicates deleted");
+                    callback();
+                  }
+                );
+              }, function (err) {
+                if (err) {
+                  console.error("deleteDuplicates() ERROR deleting duplicates " + err);
+                } else {
+                  //keep a counter to know when all the foreach have finished
+                  duplicatesProcessed++;
+                  console.log(duplicatesProcessed + " duplicates deleted out of " + duplicatesList.length)
+                  if (duplicatesProcessed === duplicatesList.length) {
+                    callback(null);
+                  }
+                }
               });
             });
-            //keep a counter to know when all the foreach have finished
-            duplicatesProcessed++;
-            console.log(duplicatesProcessed + " duplicates deleted out of " + duplicatesList.length)
-            if (duplicatesProcessed === duplicatesList.length) {
-              callback(null);
-            }
           });
         }
       });
@@ -257,14 +330,17 @@ function removeDuplicates(callback) {
  * This profiles enable subsequent updates over the next user. Only the new information generated by that user will be updated
  * If this is the first time is executed, it creates a unique index for the users
  */
-function createUserList() {
+function createUserList(callback) {
+  console.log("createUserList(): start at " + constants.datestamp());
+  var startTimems = new Date();
+
   constants.connectAndValidateNodeJs(function (err, db) {
     if (err) return console.error("initialiseDB() ERROR connecting to DB" + err);
 
     //When called this way, the results of each function is stored as  {processedUserList: [list1], capturedUserList: [list2]}
     async.parallel({
       processedUserList: function (callback) {
-        db.collection(constants.userCollection).distinct('sid', { sd: constants.websiteId }, function (err, processedUserList) {
+        db.collection(constants.userProfileCollection).distinct('sid', { sd: constants.websiteId }, function (err, processedUserList) {
           callback(null, processedUserList);
         });
       },
@@ -276,29 +352,43 @@ function createUserList() {
     },
       function (err, results) {
         //the capturedUserList will necessarily be bigger than processedUserList
-
+        console.log("User Lists retrieved from DB, " + results.capturedUserList.length + " users retrieved from the captured data");
+        var processedUserCount = 0;
         results.capturedUserList.forEach(function (userItem) {
           //For each item in capturedUserList which is not available in processedUserList, create a new profile
-          if (results.processedUserList, indexOf(userItem) != -1) {
+          if (results.processedUserList.indexOf(userItem) == -1) {
             userDocument = {
               sid: userItem,
               sd: constants.websiteId,
-              lastEventProcessed: 0,
-              lastUrlEpisodeCount: -1,
-              lastUrlEpisodeTimestampms: -1,
-              lastSdEpisodeCount: -1,
-              lastSdEpisodeTimestampms: -1
+              lastUrlEventProcessed: 0,
+              lastUrlEpisodeList: [
+                {
+                  url: "templateUrl",
+                  lastUrlEpisodeCount: 1,
+                  lastUrlEpisodeTimestampms: 0,
+                }
+              ],
+              lastSdEpisodeCount: 1,
+              lastSdEpisodeTimestampms: 0
             };
-            db.collection(constants.userCollection).insert(userDocument, function (err, records) {
+
+            db.collection(constants.userProfileCollection).insert(userDocument, function (err, records) {
               if (err) return console.error("createUserList() ERROR INSERTING USER DOCUMENT " + err);
-              else console.log("createUserList() new User document stored correctly");
+              //else console.log("createUserList() new User document stored correctly");
             });
           }
 
+          //When we finish processing all captured users
+          processedUserCount++;
+          if (processedUserCount == results.capturedUserList.length) {
+            mongoLog.logMessage("optime", "createUserList",
+              constants.websiteId, results.capturedUserList.length + " users' have been created", startTimems, new Date());
+          }
         });
-        //Ensure the indexes for the collection exist, only necessary if processedUserList was empty to start with
+
+        //Before ending, ensure the indexes for the collection exist, only necessary if processedUserList was empty to start with
         if (results.processedUserList.length == 0) {
-          db.collection(constants.userCollection).createIndex({ "sid": 1 }, { unique: true }, function (err) {
+          db.collection(constants.userProfileCollection).createIndex({ "sid": 1 }, { unique: true }, function (err) {
             if (err) return callback(err);
             callback();
           });
@@ -317,16 +407,19 @@ function urlFixer(lastTimestamp, callback) {
   console.log("urlFixer()");
   constants.connectAndValidateNodeJs(function (err, db) {
     if (err) return console.error("urlFixer() ERROR connecting to DB" + err);
-    db.collection(constants.userCollection).distinct("sid", { sd: constants.websiteId }, function (err, userList) {
+    db.collection(constants.userProfileCollection).find({ "sd": constants.websiteId }).toArray(function (err, userList) {
 
       var userCounter = 0;
       //For each user
       userList.forEach(function (userItem) {
 
+        //prevent updating the last timestamp with an earlier one
+        var lastUpdatedTimestamp = 0;
+
         //Look for url missing events
         db.collection(constants.eventCollection).find(
           {
-            "sid": userItem, "sd": constants.websiteId, "url": { $exists: false }, timestampms: { $gte: lastTimestamp }
+            "sid": userItem.sid, "sd": constants.websiteId, "url": { $exists: false }, timestampms: { $gte: userItem.lastUrlEventProcessed }
           }).toArray(function (err, urlMissingEventList) {
             if (err) return console.error("urlFixer() ERROR retrieving empty URLs " + err);
 
@@ -338,7 +431,7 @@ function urlFixer(lastTimestamp, callback) {
               //Look for distinct urls in its sessionstartms
               db.collection(constants.eventCollection).distinct("url",
                 {
-                  "sid": userItem, "sd": constants.websiteId,
+                  "sid": userItem.sid, "sd": constants.websiteId,
                   "sessionstartms": urlMissingEvent.sessionstartms
                 },
                 function (err, urlsForSession) {
@@ -357,12 +450,19 @@ function urlFixer(lastTimestamp, callback) {
                       { "_id": urlMissingEvent._id },
                       { $set: { "url": urlsForSession[0] } }
                     );
+
+                    if (urlMissingEvent.timestampms > lastUpdatedTimestamp) {
+                      db.collection(constants.userProfileCollection).update(
+                        { "sid": userItem.sid, "sd": userSd },
+                        { $set: { "lastUrlEventProcessed": urlMissingEvent.timestampms } }
+                      )
+                    }
                   }
-                  //Else --> At the moment, I will just report it.
+                  //Else, try to fix multiple URLs
                   else {
                     console.error("urlFixer() Muliple URLs found in a single session");
                     console.log(urlsForSession);
-                    fixMultipleUrlEpisode(db, userItem, urlMissingEvent.sessionstartms);
+                    fixMultipleUrlEpisode(userItem.sid, urlMissingEvent.sessionstartms);
                   }
                 });
             }
@@ -393,7 +493,7 @@ function urlFixer(lastTimestamp, callback) {
  * sessionstartmsValue, it should not do anything.
  */
 
-function fixMultipleUrlEpisode(db, sidValue, sessionstartmsValue) {
+function fixMultipleUrlEpisode(sidValue, sessionstartmsValue) {
 
   console.log("fixMultipleUrlEpisode()," + sidValue + "," + sessionstartmsValue)
   //Important! it MUST be cronologically sorted
@@ -401,7 +501,7 @@ function fixMultipleUrlEpisode(db, sidValue, sessionstartmsValue) {
     if (err) return console.error("fixMultipleUrlEpisode() ERROR retrieving session from user " + err);
 
     //we sort it ourselves rather than asking mongo (faster)
-    eventList = eventList.sort(compareEventTS);
+    eventList = eventList.sort(constants.compareEventTS);
 
     //What if the first event doesn't have a url??
     lastUrl = eventList[0].url;
@@ -454,16 +554,16 @@ function fixMultipleUrlEpisode(db, sidValue, sessionstartmsValue) {
 
 
 /**
- * Add episode counters
+ * Add episode counters. User profiles are employed to update only the events following from the last updated episodes
  * 
  */
 
-function addEpisodeCounter() {
+function addEpisodeCounter(callback) {
   console.log("addEpisodeCounter(): start");
   var startTimems = new Date();
   constants.connectAndValidateNodeJs(function (err, db) {
     if (err) return console.error("urlFixer() ERROR connecting to DB" + err);
-    db.collection(constants.userCollection).find({ "sd": constants.websiteId }).toArray(
+    db.collection(constants.userProfileCollection).find({ "sd": constants.websiteId }).toArray(
       function (err, userList) {
         var userCounter = 0;
         userList.forEach(function (userItem) {
@@ -481,23 +581,24 @@ function addEpisodeCounter() {
             lastSdEpisodeCount: 1,
             lastSdEpisodeTimestampms: -1,*/
 
-          console.log("Updating user " + userItem.sid + ", " + userCounter + " of " + userList.length);
 
           async.parallel([
             function (callback) {
-              updateEventsWithUrlSession(db, userItem.sid, userItem.sd, lastUrlEpisodeList, callback);
+              updateEventsWithUrlSession(userItem.sid, userItem.sd, userItem.lastUrlEpisodeList, callback);
             },
             function (callback) {
-              updateEventsWithSdSession(db, userItem.sid, userItem.sd,
+              updateEventsWithSdSession(userItem.sid, userItem.sd,
                 userItem.lastSdEpisodeCount, userItem.lastSdEpisodeTimestampms, callback);
             }
           ],
             // final callback
             function (err, results) {
+              console.log("Updated user " + userItem.sid + ", " + userCounter + " of " + userList.length);
+
               userCounter++;
               //All users have been processed
               if (userCounter == userList.length) {
-                mongoLog.logMessage(optime, "addEpisodeCounter",
+                mongoLog.logMessage("optime", "addEpisodeCounter",
                   constants.websiteId, userList.length + " users' episodes have been updated", startTimems, new Date());
               }
               console.log("addEpisodeCounter(): All users processed");
@@ -517,16 +618,19 @@ function addEpisodeCounter() {
  * 
  * It will look for the events for that user after a specific timestamp, and carry on updating the episodes starting with the given count.
  * 
- * @param {IDBDatabase} db 
  * @param {String} sid 
  * @param {String} sd 
  * @param {Array} lastUrlEpisodeList
  */
 
-function updateEventsWithUrlSession(db, userSid, userSd, lastUrlEpisodeList, callback) {
+function updateEventsWithUrlSession(userSid, userSd, lastUrlEpisodeList, callback) {
 
   db.collection(constants.eventCollection).distinct("url", { "sid": userSid, "sd": userSd },
     function (err, urlListForUser) {
+
+      //remove empty urls
+      urlListForUser.splice(urlListForUser.indexOf(null), 1);
+      urlListForUser.splice(urlListForUser.indexOf(""), 1);
 
       var processedUrlCount = 0;
 
@@ -546,7 +650,7 @@ function updateEventsWithUrlSession(db, userSid, userSd, lastUrlEpisodeList, cal
           lastUrlEpisodeTimestampms = lastUrlEpisodeItem.lastUrlEpisodeTimestampms;
         }
 
-        updateEventsForUserUrl(db, userSid, userSd,
+        updateEventsForUserUrl(userSid, userSd,
           urlItem, urlSessionCounter, lastUrlEpisodeTimestampms,
           function (err) {
             if (err) throw err;
@@ -562,7 +666,7 @@ function updateEventsWithUrlSession(db, userSid, userSd, lastUrlEpisodeList, cal
   );
 }
 
-function updateEventsForUserUrl(db, userSid, userSd,
+function updateEventsForUserUrl(userSid, userSd,
   urlItem, urlSessionCounter, lastUrlEpisodeTimestampms, callback) {
 
   var urlTimeSinceLastSession = 0;
@@ -573,12 +677,12 @@ function updateEventsForUserUrl(db, userSid, userSd,
 
   db.collection(constants.eventCollection).find({
     "sid": userSid, "sd": userSd,
-    "url": urlItem, timestampms: { $gte: lastUrlEpisodeTimestampms }
+    "url": urlItem, timestampms: { $gte: lastUrlEpisodeTimestampms.toString() }
   }).toArray(function (err, userUrlEventList) {
 
-    userUrlEventList = userUrlEventList.sort(compareEventTS);
+    userUrlEventList = userUrlEventList.sort(constants.compareEventTS);
 
-    console.log(userUrlEventList.length + "events found for url" + urlItem + " at:" + datestamp());
+    console.log(userUrlEventList.length + "events found for user " + userSid + " in url" + urlItem + " with time gte "+ lastUrlEpisodeTimestampms);
 
     if (userUrlEventList.length > 0)
       var lastEventTS = userUrlEventList[0].timestampms;
@@ -616,7 +720,7 @@ function updateEventsForUserUrl(db, userSid, userSd,
       if (processedUrlEventCount == userUrlEventList.length) {
         //At the end of processing each URL, we need to store the last updated counter and timestamp
         if (typeof (lastUrlEpisodeItem) === 'undefined') {
-          db.collection(constants.userCollection).update(
+          db.collection(constants.userProfileCollection).update(
             {
               "sid": userSid, "sd": userSd
             },
@@ -638,7 +742,7 @@ function updateEventsForUserUrl(db, userSid, userSd,
           );
         }
         else {
-          db.collection(constants.userCollection).update(
+          db.collection(constants.userProfileCollection).update(
             {
               "sid": userSid, "sd": userSd,
               "lastUrlEpisodeList.url": urlItem
@@ -666,13 +770,12 @@ function updateEventsForUserUrl(db, userSid, userSd,
  * 
  * It will look for the events for that user after a specific timestamp, and carry on updating the episodes starting with the given count.
  * 
- * @param {IDBDatabase} db 
  * @param {String} sid 
  * @param {String} sd 
  * @param {String} lastSdEpisodeCount 
  * @param {String} lastSdEpisodeTimestampms 
  */
-function updateEventsWithSdSession(db, sid, sd,
+function updateEventsWithSdSession(sid, sd,
   lastSdEpisodeCount, lastSdEpisodeTimestampms, callback) {
 
   var sdSessionCounter = lastSdEpisodeCount;
@@ -682,12 +785,12 @@ function updateEventsWithSdSession(db, sid, sd,
   var lastStoredEpisode = lastSdEpisodeCount;
   var lastStoredTimestampms = lastSdEpisodeTimestampms;
 
-  db.collection(constants.eventCollection).find({ "sid": sid, "sd": sd, timestampms: { $gte: lastSdEpisodeTimestampms } }).toArray(
+  db.collection(constants.eventCollection).find({ "sid": sid, "sd": sd, timestampms: { $gte: lastSdEpisodeTimestampms.toString() } }).toArray(
     function (err, userSdEventList) {
 
-      userSdEventList = userSdEventList.sort(compareEventTS);
+      userSdEventList = userSdEventList.sort(constants.compareEventTS);
 
-      console.log(userSdEventList.length + "events found for at:" + datestamp());
+      console.log(userSdEventList.length + "events found for user " + sid + " in SD "+sd + " gte " + lastSdEpisodeTimestampms);
 
       if (userSdEventList.length > 0)
         var lastEventTS = userSdEventList[0].timestampms;
@@ -701,7 +804,7 @@ function updateEventsWithSdSession(db, sid, sd,
         lastEventTS = userSdEventList[i].timestampms;
 
         //if the time between events is too big, we will start a new session
-        if (sdTimeDifference > sessionTimeout) {
+        if (sdTimeDifference > constants.sessionTimeout) {
           sdSessionCounter++;
           sdTimeSinceLastSession = sdTimeDifference;
 
@@ -723,9 +826,9 @@ function updateEventsWithSdSession(db, sid, sd,
 
         processedSdEventCount++;
         if (processedSdEventCount == userSdEventList.length) {
-          db.collection(constants.userCollection).update(
+          db.collection(constants.userProfileCollection).update(
             {
-              "sid": userSid, "sd": userSd
+              "sid": sid, "sd": sd
             },
             {
               $set: {
@@ -750,37 +853,8 @@ function updateEventsWithSdSession(db, sid, sd,
  */
 
 
-/**
-* We need our own compare function in order to be able to sort the array according to the timestamp
-*/
-function compareEventTS(objectA, objectB) {
 
-  var objectATime = Number(objectA.timestampms);
-  var objectBTime = Number(objectB.timestampms);
 
-  if (objectATime < objectBTime) {
-    //timeDifference += "##" + objectATime+ "is SMALLER than " + objectBTime;
-    return -1;
-  }
-  if (objectATime > objectBTime) {
-    //timeDifference += "##" + objectATime+ "is BIGGER than " + objectBTime;
-    return 1;
-  }
-  //timeDifference += "##" + objectATime+ "is EQUALS to " + objectBTime;
-  return 0;
-}
-
-/**
- * Returns current date in a readable format
- */
-function datestamp() {
-  var currentDate = new Date();
-  return currentDate.getFullYear() + "-" + completeDateVals(currentDate.getMonth() + 1) + "-"
-    + completeDateVals(currentDate.getDate()) + "," + completeDateVals(currentDate.getHours())
-    + ":" + completeDateVals(currentDate.getMinutes())
-    + ":" + completeDateVals(currentDate.getSeconds())
-    + ":" + completeDateValsMilliseconds(currentDate.getMilliseconds());
-}
 
 /**
  * To be called from an array, it returns the item with the given key/value pair
@@ -796,3 +870,5 @@ Array.prototype.findByValueOfObject = function (key, value) {
 
 
 module.exports.initialiseDB = initialiseDB;
+module.exports.routineFunctions = routineFunctions;
+module.exports.cleanUp = cleanUp;
