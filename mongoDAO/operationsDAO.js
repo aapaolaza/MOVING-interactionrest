@@ -16,14 +16,14 @@ function initialiseDB(callback) {
       /*function (callback) {
         urlFixer("0", callback);
       },*/
-      initialiseIndexes,
-      databaseCleanUp
+      initialiseIndexes
+      //,databaseCleanUp
     ], function (err, result) {
       if (err) return console.error("initialiseDB() ERROR occured in one of the functions: " + err);
       console.log("all initialisation functions finished");
       mongoLog.logMessage("optime", "initialiseDB",
         constants.websiteId, "All initialisation functions finished", startTimems, new Date());
-      callback("All initialisation functions finished:" + constants.datestampToReadable(startTimems)
+      callback(null, "All initialisation functions finished:" + constants.datestampToReadable(startTimems)
         + "end: " + constants.datestampToReadable(new Date()));
     });
   });
