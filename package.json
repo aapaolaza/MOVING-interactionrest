@@ -18,6 +18,7 @@
   "dependencies": {
     "async": "^2.1.5",
     "express": "^4.15.2",
+    "json-query": "^2.2.2",
     "mongodb": "^2.2.25"
   },
   "devDependencies": {},

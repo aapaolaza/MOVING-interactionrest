@@ -7,6 +7,9 @@
 var express = require('express')
 var featuresDAO = require('./mongoDAO/featuresDAO.js')
 
+
+
+
 var router = express.Router()
 
 // middleware that is specific to this router
@@ -14,10 +17,17 @@ router.use(function timeLog(req, res, next) {
   console.log('Features router Time: ', Date.now())
   next()
 })
+
 // define the home page route
-router.get('/', function (req, res) {
-  res.send('MOVING interaction REST service')
-})
+router.get("/", function (req, res) {
+  res.json({
+    "error": false, "message": "MOVING interaction REST service",
+    "routes": router.stack          // registered routes
+      .filter(r => r.route)    // take out all the middleware
+      .map(r => r.route.path)  // get all the paths
+  });
+});
+
 // define the about route
 router.get('/about', function (req, res) {
   res.send('MOVING interaction REST service')
@@ -92,6 +102,41 @@ router.route("/mockData/:userid/")
     else
       res.json({ "error": true, "message": "featureRouter /rightClick/:userid/ is missing variables" });
   })
+
+// /atsmock/?userid=w62zkMya3kBE&starttime=1454136343379&endtime=1456137344379
+router.route("/atsmock/")
+  .get(function (req, res) {
+
+    var userID = req.params.userid;
+    var startTimestamp = req.query.starttime;
+    var endTimestamp = req.query.endtime;
+
+    featuresDAO.mockATSEventsQuery(userID, startTimestamp, endTimestamp,
+      function (err, featuresList) {
+        console.log("atsmock route query results received: " + featuresList.length + "items")
+        res.json(featuresList);
+      });
+  });
+
+// /atsmockRandom/?userid=w62zkMya3kBE&starttime=1454136343379&endtime=1456137344379&documentcount=10
+router.route("/atsmockRandom/")
+  .get(function (req, res) {
+    console.log( req.query);
+
+    var userID = req.query.userid;
+    var startTimestamp = req.query.starttime;
+    var endTimestamp = req.query.endtime;
+    var documentcount = req.query.documentcount;
+
+    //Configure default parameter value for number of random docs
+    documentcount = typeof documentcount !== 'undefined' ? documentcount : 10;
+
+    featuresDAO.mockATSEventsQueryRandom(userID, startTimestamp, endTimestamp,documentcount,
+      function (err, featuresList) {
+        console.log("atsmockRandom route query results received: " + featuresList.length + " items")
+        res.json(featuresList);
+      });
+  });
 
 
 function cleanUp() {

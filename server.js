@@ -9,8 +9,13 @@ var mongoLog = require("./mongoDAO/mongoLog.js");
 
 const portNumber = 2828;
 
-router.get("/", function (req, res) {
-  res.json({ "error": false, "message": "MOVING interaction REST service" });
+app.get("/", function (req, res) {
+  res.json({
+    "error": false, "message": "MOVING interaction REST service",
+    "routes": app._router.stack          // registered routes
+      .filter(r => r.route)    // take out all the middleware
+      .map(r => r.route.path)  // get all the paths
+  });
 });
 
 var featureRouter = require("./featureRouter.js");
