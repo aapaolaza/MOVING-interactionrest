@@ -107,7 +107,7 @@ router.route("/mockData/:userid/")
 router.route("/atsmock/")
   .get(function (req, res) {
 
-    var userID = req.params.userid;
+    var userID = req.query.userid;
     var startTimestamp = req.query.starttime;
     var endTimestamp = req.query.endtime;
 
