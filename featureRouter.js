@@ -76,6 +76,33 @@ router.route("/rightClick/:userid/")
       res.json({ "error": true, "message": "featureRouter /rightClick/:userid/ is missing variables" });
   })
 
+// /submitevent/admin/?starttime=1454136343379
+router.route("/submitevent/:userid/")
+  .get(function (req, res) {
+
+    var userID = req.params.userid;//w62zkMya3kBE
+    //Provides access to the parameters following the conventional ?name=value&name2=value2
+
+    var startTimestamp = req.query.starttime.toString();//1454136343379
+
+    //Configure default parameter values
+    var endTimestamp = req.query.endtime;
+
+    endTimestamp = typeof endTimestamp !== 'undefined' ? endTimestamp.toString() : new Date().getTime().toString();
+
+    //If any of the variables has not been defined, return an error
+    if (userID && startTimestamp && endTimestamp) {
+      featuresDAO.querySubmitEvent(userID, startTimestamp, endTimestamp,
+        function (err, featuresList) {
+          console.log("rightClick route query results received: " + featuresList.length + "items")
+          res.json(featuresList);
+        });
+    }
+    else
+      res.json({ "error": true, "message": "featureRouter /submitevent/:userid/ is missing variables" });
+  })
+  
+
 router.route("/mockData/:userid/")
   .get(function (req, res) {
 

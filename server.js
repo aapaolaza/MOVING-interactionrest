@@ -9,21 +9,25 @@ var mongoLog = require("./mongoDAO/mongoLog.js");
 
 const portNumber = 2828;
 
+var additionalRoutes = [];
+
+var featureRouter = require("./featureRouter.js");
+app.use('/features', featureRouter)
+additionalRoutes.push('/features');
+
+var opRouter = require("./opRouter.js");
+app.use('/operations', opRouter)
+additionalRoutes.push('/operations');
+
 app.get("/", function (req, res) {
   res.json({
     "error": false, "message": "MOVING interaction REST service",
     "routes": app._router.stack          // registered routes
       .filter(r => r.route)    // take out all the middleware
-      .map(r => r.route.path)  // get all the paths
+      .map(r => r.route.path),  // get all the paths,
+    "additionalRoutes":additionalRoutes
   });
 });
-
-var featureRouter = require("./featureRouter.js");
-app.use('/features', featureRouter)
-
-var opRouter = require("./opRouter.js");
-app.use('/operations', opRouter)
-
 
 var server = app.listen(portNumber, function () {
   var startTimems = new Date();

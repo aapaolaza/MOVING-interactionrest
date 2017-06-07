@@ -4,8 +4,10 @@
 ///Same as MapReduceConstants, but I changed it so it can be used with Node JS http://stackoverflow.com/questions/5625569/include-external-js-file-in-node-js-app
 
 ///Module exports to act as interface can be found at the end, after all variables and functions are defined
-var MongoClient = require('mongodb').MongoClient
-  , Server = require('mongodb').Server;
+var mongodb = require('mongodb');
+
+var mongoClient = mongodb.MongoClient
+  , Server = mongodb.Server;
 
 //This tag can be found in the "msg" field in the current ops command of MapReduce commands
 const mapReduceTag = "m/r";
@@ -16,7 +18,7 @@ const mongoLogCollection = "log";
 const userProfileCollection = "userProfiles";
 
 //This prefix will be added to all queries
-const queryCollectionPrefix = "xmlQuery_";
+const queryCollectionPrefix = "xmlQuery_"
 
 ///MongoDB connection info
 var dbAccessData = require("./dbAccessData");
@@ -37,7 +39,7 @@ const eventCollection = "events";
 //web site to be analysed, determined by its "sd" value. 10002 is kupb, 10006 is CS
 const websiteId = "10006";
 
-var globalDbConnection = null
+var globalDbConnection = null;
 
 
 /** Connects to the database, authenticates the connection against the correspondent
@@ -66,56 +68,63 @@ function connectAndValidate() {
  */
 function connectAndValidateNodeJs(callback) {
   //var mongoclient = new MongoClient(new Server(mongoPath), {native_parser: true});
-
-  if (globalDbConnection) {
-      callback(err, globalDbConnection);
+  //globalDbConnection=null;
+  if (globalDbConnection && globalDbConnection.serverConfig.isConnected()) {
+    callback(null, globalDbConnection);
   }
   else {
-    mongoConnectionPath = mongoPath;
-    //For authentication we add the parameter to the mongoPath
-    //From http://mongodb.github.io/node-mongodb-native/2.0/tutorials/connecting/
-    //Authentication > Indirectly Against Another Database
-    if (mongoUser !== "" && mongoUser !== "DBUSERNAME")
-      mongoConnectionPath = mongoUser + ":" + mongoPass + "@" + mongoPath
-        + "?authSource=" + mongoAuthenticateDB;
-
-    var options = {
-      server: {
-        socketOptions: {
-          keepAlive: mongoTimeout, 
-          connectTimeoutMS: mongoTimeout,
-          socketTimeoutMS: mongoTimeout
-        }
-      },
-      replset: {
-        socketOptions: {
-          keepAlive: mongoTimeout,
-          connectTimeoutMS: mongoTimeout,
-          socketTimeoutMS: mongoTimeout
-        }
-      }
-    };
-
-    // Open the connection to the server
-    MongoClient.connect("mongodb://" + mongoPath, options, function (err, globalDbConnection) {
-      if (err) { callback(err, null); }
-      callback(err, globalDbConnection);
-    });
+    createNewConnection(callback);
   }
+}
+
+function createNewConnection(callback) {
+  console.log("connectAndValidateNodeJs(): CREATING a new connection");
+
+  mongoConnectionPath = mongoPath;
+  //For authentication we add the parameter to the mongoPath
+  //From http://mongodb.github.io/node-mongodb-native/2.0/tutorials/connecting/
+  //Authentication > Indirectly Against Another Database
+  if (mongoUser !== "" && mongoUser !== "DBUSERNAME")
+    mongoConnectionPath = mongoUser + ":" + mongoPass + "@" + mongoPath
+      + "?authSource=" + mongoAuthenticateDB;
+
+  var options = {
+    server: {
+      socketOptions: {
+        keepAlive: mongoTimeout,
+        connectTimeoutMS: mongoTimeout,
+        socketTimeoutMS: mongoTimeout
+      }
+    },
+    replset: {
+      socketOptions: {
+        keepAlive: mongoTimeout,
+        connectTimeoutMS: mongoTimeout,
+        socketTimeoutMS: mongoTimeout
+      }
+    }
+  };
+
+  // Open the connection to the server
+  mongoClient.connect("mongodb://" + mongoPath, options, function (err, dbConnection) {
+    if (err) { callback(err, null); }
+    globalDbConnection = dbConnection;
+    callback(err, dbConnection);
+  });
 }
 
 /**
  * If there is an existing connection to reuse. Overwrites existing connection
  */
-function reuseConnection(db){
+function reuseConnection(db) {
   globalDbConnection = db;
 }
 
-function closeConnection(){
+function closeConnection() {
   if (globalDbConnection) globalDbConnection.close();
 }
 
-function getCurrentConnectionOptions(){
+function getCurrentConnectionOptions() {
   return ("mongoTimeout = " + mongoTimeout);
 }
 
@@ -188,6 +197,8 @@ scopeObject["resize"] = resizeEvent;
 //////Session timeout
 const sessionTimeout = 40 * 60 * 1000;//40 mintues
 scopeObject["sessionTimeout"] = sessionTimeout;
+scopeObject["episodeField"] = episodeField;
+
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -290,6 +301,13 @@ function compareEventTS(objectA, objectB) {
 
 
 //////Modules
+module.exports.mongodb = mongodb;
+module.exports.mapReduceTag = mapReduceTag;
+module.exports.xmlQueryResults = xmlQueryResults;
+module.exports.xmlQueryCatalog = xmlQueryCatalog;
+
+module.exports.mongoLogCollection = mongoLogCollection;
+module.exports.userProfileCollection = userProfileCollection;
 module.exports.mongoQueryDB = mongoQueryDB;
 module.exports.connectAndValidateNodeJs = connectAndValidateNodeJs;
 module.exports.closeConnection = closeConnection;

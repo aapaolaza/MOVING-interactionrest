@@ -46,6 +46,40 @@ function testFeatureQuery(userID, featureName, startTimestamp, endTimestamp, cal
   });
 }
 
+/**
+ * This test returns all occurrences of "submit"
+ * example query:
+ * db.events.find({sid: "admin", timestampms: {$gte: "1454136343379",$lte: "1456137344379"},event: "submit"})
+ * The upcoming functions should work using the same set of parameters:
+ * @param userID
+ * @param startTimestamp EPOCH
+ * @param endTimestamp EPOCH
+ */
+
+function querySubmitEvent(userID, startTimestamp, endTimestamp, callback) {
+  console.log("featuresDAO:submitEventQuery()");
+
+  constants.connectAndValidateNodeJs(function (err, db) {
+    if (err) return console.error("submitEventQuery() ERROR connecting to DB" + err);
+    console.log("featuresDAO:submitEventQuery() running the query with the following parameters:");
+    console.log(userID + ":" + typeof (userID));
+    console.log(startTimestamp + ":" + typeof (startTimestamp));
+    console.log(endTimestamp + ":" + typeof (endTimestamp));
+    //Construct the query
+    db.collection(constants.eventCollection).find({
+      sid: userID,
+      timestampms: {
+        $gte: startTimestamp,
+        $lte: endTimestamp
+      },
+      event: "submit"
+    }).toArray(function (err, featuresList) {
+      console.log("featuresDAO:testFeatureQuery() Query ended");
+      callback(null, featuresList);
+    });
+  });
+}
+
 
 function mockFeatureQuery(userID, featureName, startTimestamp, endTimestamp, callback) {
   console.log("featuresDAO:mockFeatureQuery()");
@@ -125,6 +159,7 @@ function mockATSEventsQueryRandom(userID, startTimestamp, endTimestamp, numberOf
 
 module.exports.cleanUp = cleanUp;
 module.exports.testFeatureQuery = testFeatureQuery;
+module.exports.querySubmitEvent = querySubmitEvent;
 module.exports.mockFeatureQuery = mockFeatureQuery;
 module.exports.mockATSEventsQuery = mockATSEventsQuery;
 module.exports.mockATSEventsQueryRandom = mockATSEventsQueryRandom;
