@@ -1,6 +1,7 @@
 var async = require('async');
 var constants = require("./MapReduceConstantsNode.js");
 var mongoLog = require("./mongoLog.js");
+mongoLog.setConstants(constants);
 
 
 var db;

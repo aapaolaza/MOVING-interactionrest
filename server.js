@@ -19,6 +19,10 @@ var opRouter = require("./opRouter.js");
 app.use('/operations', opRouter)
 additionalRoutes.push('/operations');
 
+var wevqueryRouter = require("./wevqueryRouter.js");
+app.use('/wevquery', wevqueryRouter)
+additionalRoutes.push('/wevquery');
+
 app.get("/", function (req, res) {
   res.json({
     "error": false, "message": "MOVING interaction REST service",

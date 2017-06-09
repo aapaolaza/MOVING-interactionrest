@@ -1,5 +1,11 @@
-var constants = require("./MapReduceConstantsNode.js");
+var constants;
 
+function setConstants(mapReduceConstants){
+  constants = mapReduceConstants;
+}
+
+
+const APPNAME = "MOVING-interactionrest";
 
 /**
  *  * Given a message and a timestamp, it logs the operation,
@@ -15,6 +21,7 @@ function logMessage(type, operation, sd, message, startTimems, endTimems) {
   constants.connectAndValidateNodeJs(function (err, db) {
     if (err) return console.error("initialiseDB() ERROR connecting to DB" + err);
     logDocument = {
+      application: APPNAME,
       type,
       operation,
       sd,
@@ -33,5 +40,5 @@ function logMessage(type, operation, sd, message, startTimems, endTimems) {
 }
 
 
-
+module.exports.setConstants = setConstants;
 module.exports.logMessage = logMessage;
