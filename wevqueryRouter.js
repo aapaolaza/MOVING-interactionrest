@@ -47,7 +47,7 @@ router.get('/catalog', function (req, res) {
 
 
 //For ucivitdb mock data, use the following rest query to test
-// /loadToKeydown/0aCVHH9zoBm5/?starttime=1454136343379&endtime=1456137344379&strictMode=false
+// /loadToKeydown/0aCVHH9zoBm5/?starttime=1454136343379&endtime=1456137344379&strictMode=false&fillEventInfo=false
 router.route("/:queryname/:userid/")
   .get(function (req, res) {
 
@@ -69,6 +69,10 @@ router.route("/:queryname/:userid/")
     if (typeof req.query.strictMode !== 'undefined')
       queryOptions.isQueryStrict = req.query.strictMode;
 
+
+    if (typeof req.query.fillEventInfo !== 'undefined')
+      queryOptions.fillEventInfo = req.query.fillEventInfo;
+
     var title = queryName + "_" + userId;
 
     //If any of the variables has not been defined, return an error
@@ -82,25 +86,20 @@ router.route("/:queryname/:userid/")
           mongoDAO.runXmlTempQuery(title, queryCatalogInfo.queryXML, queryOptions,
             function (err, queryTitle, queryCollName, processTime) {
               if (err) return console.error("wevQueryRouter() ERROR in endCallback " + err);
+              //Query ended
 
-              //Query ended, return the results, and delete the collection
-              mongoDAO.getXmlQueryDataByCollection(queryCollName, function (err, title, itemList) {
-                if (err) return console.error("WevQueryRouter: getXmlQueryData() ERROR connecting to DB" + err);
-                console.log("wevQueryRouter() query ended, retrieving results");
-                var jsonOutput = [];
-
-                for (var index = 0; index < itemList.length; index++) {
-                  jsonOutput.push(itemList[index]);
-                }
-                res.json(jsonOutput);
-
-                //Delete generated temporal collection
-                mongoDAO.deleteTempResultCollection(queryCollName,
-                  function (err) {
-                    if (err) return console.error("WevQueryRouter: deleteTempResultCollection()" +
-                      "ERROR deleting: " + queryCollName + err);
-                  });
-              });
+              //Do we need to fill in ALL information for resulting events?
+              if (queryOptions.fillEventInfo) {
+                mongoDAO.feedQueryInformationByCollection(queryCollName, function (err) {
+                  if (err) return console.error("WevQueryRouter: feedQueryInformationByCollection() ERROR connecting to DB" + err);
+                  //The collection has been fed, return the collection, which is now FULL
+                  returnResultsAndClean(res,queryCollName);
+                });
+              }
+              else {
+                //no need to fill in additional information, return collection as it is
+                returnResultsAndClean(res,queryCollName);
+              }
             },
             function (err, queryTitle, queryData) {
               if (err) return console.error("wevQueryRouter() ERROR in launchedCallback " + err);
@@ -113,6 +112,33 @@ router.route("/:queryname/:userid/")
     else
       res.json({ "error": true, "message": "featureRouter /rightClick/:userid/ is missing variables" });
   })
+
+/**
+ * Given a response object and a query result collection name,
+ * sends the results to the client and deletes the temporary collection.
+ * @param {Response} res 
+ * @param {String} queryCollName 
+ */
+function returnResultsAndClean(res,queryCollName) {
+  //return the results, and delete the collection
+  mongoDAO.getXmlQueryDataByCollection(queryCollName, function (err, title, itemList) {
+    if (err) return console.error("WevQueryRouter: getXmlQueryData() ERROR connecting to DB" + err);
+    console.log("wevQueryRouter() query ended, retrieving results");
+    var jsonOutput = [];
+
+    for (var index = 0; index < itemList.length; index++) {
+      jsonOutput.push(itemList[index]);
+    }
+    res.json(jsonOutput);
+
+    //Delete generated temporal collection
+    mongoDAO.deleteTempResultCollection(queryCollName,
+      function (err) {
+        if (err) return console.error("WevQueryRouter: deleteTempResultCollection()" +
+          "ERROR deleting: " + queryCollName + err);
+      });
+  });
+}
 
 function cleanUp() {
   featuresDAO.cleanUp();

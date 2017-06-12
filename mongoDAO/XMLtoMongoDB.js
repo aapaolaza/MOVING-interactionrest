@@ -1,4 +1,4 @@
-//2017-06-09 15:18:18
+//2017-06-12 17:45:34
 //Created as a node js script. Run:
 //npm install mongodb --save
 //https://www.npmjs.com/package/xpath
@@ -428,7 +428,6 @@ function executeXmlMapReduce(xmlQuery, xmlDoc, mapReduceVars, endCallback, launc
       console.log(results);
       console.log(stats);
       console.log("Query finished in " + stats.processtime + " ms");
-      //feedQueryResultsInformation(mapReduceVars.title);
       endCallback(null, mapReduceVars.title, mapReduceVars.dbTitle, stats.processtime);
     }
   );
@@ -941,31 +940,49 @@ function finalizeFunction(key, reduceOutput) {
  * data from the database
  * @param {string} queryTitle with the name of the query results to feed back
  */
-function feedQueryResultsInformation(queryTitle) {
+function feedQueryResultsByTitle(queryTitle,callback) {
+  var startTimems = new Date();
+  var queryCollName = queryCollectionPrefix + queryTitle;
+  feedQueryInformationByCollection(queryCollName,callback);
+}
+
+/**
+ * Takes a query collection name as input, and replaces all the event results with the corresponding
+ * data from the database
+ * @param {string} queryTitle with the name of the query results to feed back
+ */
+function feedQueryInformationByCollection(queryCollName,callback) {
   console.log("Starting the feed of the information");
   var startTimems = new Date();
 
   constants.connectAndValidateNodeJs(function (err, db) {
+    var resultCount = 0;
     //Retrieve all documents with at least one result
-    //db.collection(queryCollectionPrefix + queryTitle).find({ "value.xmlQueryCounter": { $gt: 0 } }, function (err, documents) {
-    db.collection(queryCollectionPrefix + queryTitle).find({ "value.xmlQueryCounter": { $gt: 0 } })
+    db.collection(queryCollName).find({ "value.xmlQueryCounter": { $gt: 0 } })
       .toArray(function (err, documents) {
         //docElem = documents[0];
 
         //async.eachLimit(documents, 1,
         async.each(documents,
           function (docElem, callback) {
-            updateXmlQueryDocument(docElem, db, queryTitle, callback);
+            updateXmlQueryDocument(docElem, db, queryCollName, callback);
           },
           function (err) {
             if (err) {
               console.error(err.message);
               mongoLog.logMessage("error", "feedQueryResultsInformation",
                 constants.websiteId, "feedQueryResultsInformation() failed", startTimems, new Date());
+              callback(err);
             }
-            else
+            else{
               mongoLog.logMessage("optime", "feedQueryResultsInformation",
                 constants.websiteId, "feedQueryResultsInformation finished successfully " + queryTitle, startTimems, new Date());
+              
+              //Update count, and call parent callback when count reaches end
+              resultCount++;
+              if (resultCount >= documents.length);
+              callback(null);
+            }
           });
       });
   });
@@ -976,9 +993,9 @@ function feedQueryResultsInformation(queryTitle) {
  * Given a xmlQuery result document, augments all the events with information from the main event DB
  * @param {xmlQueryDocument} docElem 
  * @param {mongoDBConnection} db
- * @param {string} queryTitle
+ * @param {string} queryCollName
  */
-function updateXmlQueryDocument(docElem, db, queryTitle, callback) {
+function updateXmlQueryDocument(docElem, db, queryCollName, callback) {
   var documentId = docElem._id;
   /*console.log("feedQueryResultsInformation of document:");
   console.log(documentId);*/
@@ -1028,7 +1045,7 @@ function updateXmlQueryDocument(docElem, db, queryTitle, callback) {
         console.log("Updating it with:");
         console.log(xmlQueryEventUpdatedValue);
         */
-        db.collection(queryCollectionPrefix + queryTitle).updateOne(
+        db.collection(queryCollName).updateOne(
           xmlQueryEventIndex,
           { $set: xmlQueryEventUpdatedValue }, function (err, doc) {
             resultCount++;
@@ -1097,5 +1114,7 @@ module.exports.runXmlQuery = runXmlQuery;
 module.exports.runXmlTempQuery = runXmlTempQuery;
 module.exports.getXmlQueryData = getXmlQueryData;
 module.exports.getXmlQueryDataByCollection = getXmlQueryDataByCollection;
+module.exports.feedQueryInformationByCollection = feedQueryInformationByCollection;
+module.exports.feedQueryResultsByTitle = feedQueryResultsByTitle;
 module.exports.deleteResultCollection = deleteResultCollection;
 module.exports.deleteTempResultCollection = deleteTempResultCollection;
